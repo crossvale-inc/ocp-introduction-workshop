@@ -247,3 +247,385 @@ $ curl http://localhost:5140/weather
                                  Dload  Upload   Total   Spent    Left  Speed
   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     100   387    0   387    0     0   2415      0 --:--:-- --:--:-- --:--:--  2433[{"date":"2024-01-26","temperatureC":18,"summary":"Sweltering","temperatureF":64},{"date":"2024-01-27","temperatureC":-15,"summary":"Hot","temperatureF":6},{"date":"2024-01-28","temperatureC":41,"summary":"Sweltering","temperatureF":105},{"date":"2024-01-29","temperatureC":31,"summary":"Warm","temperatureF":87},{"date":"2024-01-30","temperatureC":0,"summary":"Mild","temperatureF":32}]
 ```
+
+### Lab 1.3 Create Back-End Service Container Image
+
+To create the container image to run the application it is required to configure a Dockerfile with the expected frameworks and commands that build and deploy the .NET application.
+
+The base image required, is an official redhat .NET 8 image:
+
+```
+FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env 
+```
+
+This image will be used to build the application. To build the application it is required to copy the resources to the image and run the required dotnet commands:
+
+```
+
+```
+
+--> Explain docker file
+
+--> run as containers connecting each other
+
+--> Show it is difficult due to run, build, ips, etc
+
+AS containers
+
+with network bridge
+
+discoger ip
+
+podman inspect backend -> use it
+
+### Lab 1.4 Build Images in Openshift
+
+oc new-build --name back-end-service --binary=true
+
+Generates:
+
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewBuild
+  resourceVersion: '223823'
+  name: back-end-service
+  uid: c55d0380-094c-4118-bb05-97f90ba7db3c
+  creationTimestamp: '2024-01-26T02:47:10Z'
+  generation: 1
+  managedFields:
+    - manager: oc
+      operation: Update
+      apiVersion: build.openshift.io/v1
+      time: '2024-01-26T02:47:10Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:openshift.io/generated-by': {}
+          'f:labels':
+            .: {}
+            'f:build': {}
+        'f:spec':
+          'f:output':
+            'f:to': {}
+          'f:runPolicy': {}
+          'f:source':
+            'f:binary': {}
+            'f:type': {}
+          'f:strategy':
+            'f:dockerStrategy': {}
+            'f:type': {}
+          'f:triggers': {}
+  namespace: default
+  labels:
+    build: back-end-service
+spec:
+  nodeSelector: null
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'back-end-service:latest'
+  resources: {}
+  successfulBuildsHistoryLimit: 5
+  failedBuildsHistoryLimit: 5
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  postCommit: {}
+  source:
+    type: Binary
+    binary: {}
+  triggers:
+    - type: GitHub
+      github:
+        secret: l2l4eM7aQqcXyPORN-x_
+    - type: Generic
+      generic:
+        secret: gkz4-Ioe5eIiHcZzWMvo
+  runPolicy: Serial
+status:
+  lastVersion: 0
+
+And:
+
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewBuild
+  resourceVersion: '223822'
+  name: back-end-service
+  uid: 5571b527-6694-4583-84f4-8a43f925ae95
+  creationTimestamp: '2024-01-26T02:47:10Z'
+  generation: 1
+  managedFields:
+    - manager: oc
+      operation: Update
+      apiVersion: image.openshift.io/v1
+      time: '2024-01-26T02:47:10Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:openshift.io/generated-by': {}
+          'f:labels':
+            .: {}
+            'f:build': {}
+  namespace: default
+  labels:
+    build: back-end-service
+spec:
+  lookupPolicy:
+    local: false
+status:
+  dockerImageRepository: 'image-registry.openshift-image-registry.svc:5000/default/back-end-service'
+  publicDockerImageRepository: >-
+    default-route-openshift-image-registry.apps-crc.testing/default/back-end-service
+
+
+Start Build, does the build for us:
+
+$ oc start-build back-end-service --from-dir=.
+
+Same for front-end
+
+--> TODO 
+
+## Lab2 Deploy a .NET Microservice
+
+Show run a pod:
+
+oc run back-end-service --image=back-end-service:latest
+
+Go to terminal and logs, show logs are the same as the container
+
+Go to terminal and run curl
+
+show works with localhost from terminal,
+
+show works with ip from terminal,
+
+show works with podname from terminal,
+
+Create a new front-end image and pod the same way
+
+Show that in this case the pod IP to backend works but the name does not
+
+If the pod is deleted, it does not reappear!
+
+If the a new pod is created, it has a new IP, new node, everything!
+
+show the problems, what happens if the application needs to scale? how to decide pod names or IPs? is not manageable if there are dozens or hunders of containers
+
+Show the number of pods in the cluster:
+
+oc get pods -A
+
+Count it
+
+oc get pods -A | wc -l
+
+Explain how difficult it would be to manage all those pods individually
+
+delete created back-end and front-end pods
+
+The solution is Deployments!
+
+Deployment yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: back-end-service
+  labels:
+    app: back-end-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: back-end-service
+  template:
+    metadata:
+      labels:
+        app: back-end-service
+    spec:
+      containers:
+      - name: back-end-service
+        image: image-registry.openshift-image-registry.svc:5000/default/back-end-service
+        ports:
+        - containerPort: 8080
+
+Show that deployment creates multiple pods and if one is deleted then other appears, and it is easy to scale up and down.
+
+Shwo that a yaml change on deployment produces a redeploy of all pods.
+
+Show that the service discovery problem still occurs!
+
+The solution is a service!
+
+Create a service for the back-end-service and check it from a front-end pod!
+
+to create a service create 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: back-end-service
+spec:
+  selector:
+      app: back-end-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+
+Change endpoint in front-end-service and re run the pod to see if it is able to get data
+
+->->
+
+Create a deployment and a service for front end
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-end-service
+  labels:
+    app: front-end-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: front-end-service
+  template:
+    metadata:
+      labels:
+        app: front-end-service
+    spec:
+      containers:
+      - name: front-end-service
+        image: image-registry.openshift-image-registry.svc:5000/default/front-end-service
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-end-service
+spec:
+  selector:
+      app: front-end-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+To access front end from outside the cluster create a route:
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: front-end-service
+spec:
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: front-end-service
+
+Show oc get routes output
+
+Do a curl to that host:
+
+curl http://front-end-service-default.apps-crc.testing/weather
+
+
+Since the FrontEnd application needs is exposing the weather forecast to external consumers, it is possible to implement a web-application that consumes that service.
+
+mkdir web-application
+
+//TODO HTMLs and Jss
+
+Copy htmls and Jss
+
+Deploy a NGINX app to show the weather in html
+
+oc new-build --name web-application --binary=true
+
+Create the image:
+
+$ oc start-build web-application --from-dir=. --follow
+
+And deploy it with service and route:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-application
+  labels:
+    app: web-application
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-application
+  template:
+    metadata:
+      labels:
+        app: web-application
+    spec:
+      containers:
+      - name: web-application
+        image: image-registry.openshift-image-registry.svc:5000/default/web-application
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-application
+spec:
+  selector:
+      app: web-application
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: web-application
+spec:
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: web-application
+
+NOTE: if error, mixed-blocked change front-end route ot be https.
+
+-> Error due to CORs -> needs to be anabled
+
+## Lab3 Configuration Management
+
+
+-> TODO COnfigmaps injection
+-> ENV vars
+-> JSON Loading
+
+-> Kustomize templates
+
+
+## Lab4 Configure Autoscaling
+
+
