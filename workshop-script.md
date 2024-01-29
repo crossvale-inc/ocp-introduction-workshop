@@ -364,46 +364,33 @@ $ podman exec 614606cdfb66 curl http://localhost:8080/weather
 
 ### Lab 1.4 Build Images in Openshift
 
+Openshfit container platform simplifies the configuration requirements to run containers and to discover the IP addrress among other things.
+
+In order to run a container in Openshift it is required to have an image created. 
+
+It is possible to create a `BuildConfig` object which describes how an image can be built. The build configuration can be binary, which means that it will require an input in order to be executed, other option could be to add a git repository as the build configuration source.
+
+It is possible to create a `BuildConfig` by executing the following commmand:
+
+```
 oc new-build --name back-end-service --binary=true
+```
 
-Generates:
+Which Generates a `BuildConfig` object and an `ImageStream`, the image stream is required in order to have a reference to an image stored in the Openshift image registry.
 
+An `ImageStream` provides an abstraction layer to manage images in Openshfit, it presents a virtual view of the images to which it is associated. 
+
+When you define an object that references an image stream tag, such as a build or deployment configuration, you point to an image stream tag and not the repository. When you build or deploy your application, OpenShift Container Platform queries the repository using the image stream tag to locate the associated ID of the image and uses that exact image.
+
+The objects created by the previous command are:
+
+```
 kind: BuildConfig
 apiVersion: build.openshift.io/v1
 metadata:
   annotations:
     openshift.io/generated-by: OpenShiftNewBuild
-  resourceVersion: '223823'
   name: back-end-service
-  uid: c55d0380-094c-4118-bb05-97f90ba7db3c
-  creationTimestamp: '2024-01-26T02:47:10Z'
-  generation: 1
-  managedFields:
-    - manager: oc
-      operation: Update
-      apiVersion: build.openshift.io/v1
-      time: '2024-01-26T02:47:10Z'
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            .: {}
-            'f:openshift.io/generated-by': {}
-          'f:labels':
-            .: {}
-            'f:build': {}
-        'f:spec':
-          'f:output':
-            'f:to': {}
-          'f:runPolicy': {}
-          'f:source':
-            'f:binary': {}
-            'f:type': {}
-          'f:strategy':
-            'f:dockerStrategy': {}
-            'f:type': {}
-          'f:triggers': {}
-  namespace: default
   labels:
     build: back-end-service
 spec:
@@ -430,97 +417,149 @@ spec:
       generic:
         secret: gkz4-Ioe5eIiHcZzWMvo
   runPolicy: Serial
-status:
-  lastVersion: 0
+```
 
-And:
+And the image stream:
 
+```
 kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
-  annotations:
-    openshift.io/generated-by: OpenShiftNewBuild
-  resourceVersion: '223822'
   name: back-end-service
-  uid: 5571b527-6694-4583-84f4-8a43f925ae95
-  creationTimestamp: '2024-01-26T02:47:10Z'
-  generation: 1
-  managedFields:
-    - manager: oc
-      operation: Update
-      apiVersion: image.openshift.io/v1
-      time: '2024-01-26T02:47:10Z'
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:metadata':
-          'f:annotations':
-            .: {}
-            'f:openshift.io/generated-by': {}
-          'f:labels':
-            .: {}
-            'f:build': {}
-  namespace: default
   labels:
     build: back-end-service
 spec:
   lookupPolicy:
     local: false
-status:
-  dockerImageRepository: 'image-registry.openshift-image-registry.svc:5000/default/back-end-service'
-  publicDockerImageRepository: >-
-    default-route-openshift-image-registry.apps-crc.testing/default/back-end-service
+```
 
+To start the `back-end-service` image build it is necessary to upload the content to the build. In order to to that, move to the back-end-service root folder and execute the following command that indicates the current directory as the input for the binary build:
 
-Start Build, does the build for us:
+```
+oc start-build back-end-service --from-dir=. --follow
+```
 
-$ oc start-build back-end-service --from-dir=.
+Since there is a `Dockerfile` in the root folder of the input, it will build the image according to the steps specified in that `Dockerfile`.
 
-Same for front-end
-
---> TODO 
+The same procedure can be followed to build an image for the front end service.
 
 ## Lab2 Deploy a .NET Microservice
 
-Show run a pod:
+When an image is built in openshift it is possible to run a container within a pod that executes the specified image.
 
-oc run back-end-service --image=back-end-service:latest
+It is possible to run a pod with a simple `oc` command:
 
-Go to terminal and logs, show logs are the same as the container
+```
+oc run back-end-service --image=image-registry.openshift-image-registry.svc:5000/workshop/back-end-image:latest
+```
 
-Go to terminal and run curl
+When the pod is created, it is possible to open a terminal inside the container or to see the container logs from the Openshfit console. In order to test if the image is running correcltly, it is possible connect to the running pod:
 
-show works with localhost from terminal,
+```
+oc rsh back-end-service
+```
 
-show works with ip from terminal,
+And execute a curl command:
 
-show works with podname from terminal,
+```
+$ curl http://localhost:8080/weatherForecast
+[{"date":"2024-01-30","temperatureC":-17,"summary":"Cool","temperatureF":2},{"date":"2024-01-31","temperatureC":37,"summary":"Chilly","temperatureF":98},{"date":"2024-02-01","temperatureC":36,"summary":"Sweltering","temperatureF":96},{"date":"2024-02-02","temperatureC":14,"summary":"Sweltering","temperatureF":57},{"date":"2024-02-03","temperatureC":19,"summary":"Mild","temperatureF":66}]
+```
 
-Create a new front-end image and pod the same way
+It is possible to do the same and run the front-end-service as another pod in Openshift.
 
-Show that in this case the pod IP to backend works but the name does not
+When the front-end-service is running, there should be two pods running within the same namespace:
 
-If the pod is deleted, it does not reappear!
+```
 
-If the a new pod is created, it has a new IP, new node, everything!
+```
 
-show the problems, what happens if the application needs to scale? how to decide pod names or IPs? is not manageable if there are dozens or hunders of containers
+The front-end-service will not be able to return a valid response since the Pod Ip of the back-end-servie is not configured. It is not recommended to manually configure a Pod IP as an endpoint because it is different for each Pod.
 
-Show the number of pods in the cluster:
+To discover the Pod Ip of the back end service, run the following command:
 
-oc get pods -A
+```
+oc get pod back-end-service  -o jsonpath='{.status.podIP}'
+```
 
-Count it
+If a curl is executed from the front end pod to that ip:
 
-oc get pods -A | wc -l
+```
+curl http://10.217.0.107:8080/weatherForecast
+```
 
-Explain how difficult it would be to manage all those pods individually
+If the back-end-service pod is deleted then IP will change, the pod name `back-end-service` is not valid because the front end pod will not be able to resolve the host name `back-end-service`.
 
-delete created back-end and front-end pods
+```
+curl http://back-end-service:8080/weatherForecast
+```
 
-The solution is Deployments!
+To resolve this problem, it is possible to create a `Service`:
 
-Deployment yaml
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: back-end-service
+spec:
+  selector:
+      run: back-end-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+```
 
+After the service is created, if the same curl to the `back-end-service` host it works because it is able to resolve the ip since there is a service called `back-end-service`:
+
+```
+curl http://back-end-service:8080/weatherForecast
+```
+
+In Openshift there is the concept of health probes on pods that are used to monitor if an application healthy, a health probe periodically performs diagnostics in a running container to check if it is still alive or if it is ready to accept incoming traffic.
+
+There are three typesof probes:
+
+* Startup Probe
+** Indicates wheter the application within a container is started. All other probes are disabled until the Startup Probe is successful.
+* Liveness Probe
+** Determines if a container is running, if it fails the cluster kills the container.
+* Readiness Probe
+** Determines if a container is ready to accept incoming traffic, if it fails it removes the container from the list of available endpoints.
+
+All the probes can be configured as:
+
+* HTTP GET operation
+** A successful operation is considered if the HTTP status code returned is between 200-399
+* Command
+** Executes a command in the container, is successful if it exists with s 0 status.
+* TCP socket
+** If a connection is established the probe is successful
+
+Other important configuration for Pods are the resources available to each container. The resources can be specified as `request` or as a `limit`. 
+
+When the request is specified the Pod will be scheduled in a node that has resources free to guarantee that the requested resource is available. 
+
+A limit, however, is the maximum amount of that resource that a container can consume.
+
+If there are multiple containers within a Pod, the request and limit of that Pod is the sum of the requests and limits in all containers in the Pod.
+
+On the other hand, it is not recommended to run pods in isolation. If a pod is deleted, it dies and a new pod needs to be created manually and all pods need to be configured as separated resources which makes the configuration management difficult since all pods of the same service in a given namespace will probably have the same configuration.
+
+To manage pods easily, it is possible to create a `Deployment` object, which manages the pod status to match desired status specified in the YAML and is able to ensure that the number of replicas specified are running.
+
+Before continuing, delete the created pods and service: 
+
+```
+oc delete pod back-end-service
+oc delete pod front-end-service
+oc delete service back-end-service
+```
+
+To create a Deployment, create the following YAML: 
+
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -528,7 +567,7 @@ metadata:
   labels:
     app: back-end-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: back-end-service
@@ -539,22 +578,19 @@ spec:
     spec:
       containers:
       - name: back-end-service
-        image: image-registry.openshift-image-registry.svc:5000/default/back-end-service
+        image: image-registry.openshift-image-registry.svc:5000/workshop/back-end-service
         ports:
         - containerPort: 8080
+```
 
-Show that deployment creates multiple pods and if one is deleted then other appears, and it is easy to scale up and down.
+It is possible to create multiple pods with the same specification by changing the number of replicas in the `Deployment` specification, also, if a pod is deleted a new one will be created.
 
+If a change of the specification is done, it will redeploy a new version of all the pod replicas that will match the new speification.
 Shwo that a yaml change on deployment produces a redeploy of all pods.
 
-Show that the service discovery problem still occurs!
+To enable the communication across pods, create a service for the back-end-service deployment:
 
-The solution is a service!
-
-Create a service for the back-end-service and check it from a front-end pod!
-
-to create a service create 
-
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -567,14 +603,12 @@ spec:
       protocol: TCP
       port: 8080
       targetPort: 8080
+```
 
-
-Change endpoint in front-end-service and re run the pod to see if it is able to get data
-
-->->
-
+It is possible to create a deployment and a service for the front-end-service the same way as with the back end service but changing the image that the containers within the pod need to run.
 Create a deployment and a service for front end
 
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -582,7 +616,7 @@ metadata:
   labels:
     app: front-end-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: front-end-service
@@ -593,7 +627,7 @@ spec:
     spec:
       containers:
       - name: front-end-service
-        image: image-registry.openshift-image-registry.svc:5000/default/front-end-service
+        image: image-registry.openshift-image-registry.svc:5000/workshop/front-end-service
         ports:
         - containerPort: 8080
 ---
@@ -609,9 +643,13 @@ spec:
       protocol: TCP
       port: 8080
       targetPort: 8080
+```
 
-To access front end from outside the cluster create a route:
+The service created only allows communication within the cluster, the PodIps are only accesible to services running inside the Openshift cluster. It is possible to enable communication to consumers outside the cluster by creating an Openshift `Route`:
 
+To expose the front end from outside the cluster create a route:
+
+```
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -622,32 +660,107 @@ spec:
   to:
     kind: Service
     name: front-end-service
+```
 
-Show oc get routes output
+When the route is creted, it is possible to discover the hostname by executing the command:
 
-Do a curl to that host:
+```
+oc get routes
+```
 
-curl http://front-end-service-default.apps-crc.testing/weather
+If a curl is executed to that route, a successful response will be obtained:
 
+```
+curl http://<route_host>/weather
+````
 
-Since the FrontEnd application needs is exposing the weather forecast to external consumers, it is possible to implement a web-application that consumes that service.
+This means that the `front-end-service` is exposing the weather forecast to external consumers, so it is possible to implement a web-application that consumes that service and shows the weather information.
 
+Create a new folder that will include the `web-application` resources:
+
+```
 mkdir web-application
+```
 
-//TODO HTMLs and Jss
+Create a file named `index.html` with the following content:
 
-Copy htmls and Jss
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workshop</title>
+    <script src="./index.js" defer></script>
+  </head>
+  <style>
+    .content {
+      max-width: 500px;
+      margin: auto;
+    }
+    </style>
+  <body class="content">
+    <h1>Weather Forecast</h1>
+    <button id="getButton">GET Data</button>
+    <div id="my-table"></div>
+  </body>
+</html>
+```
 
-Deploy a NGINX app to show the weather in html
+And also a Javascript file named `index.js` in the same folder, mind that the url in your case could be different.
 
+```
+getButton.addEventListener("click", () => {
+    fetch('http://front-end-service-route/weather')
+        .then(response => { 
+            return response.json()
+        })
+        .then(data => {
+            
+            var html  = '<table id=\'dataset\'><tr><th>DATE</th><th>SUMMARY</th><th>TEMPERATURE F</th><th>TEMPERATURE C</th>'
+
+            data.forEach(forecast => {
+                html+= `<tr><td>${forecast.date}<td><td>${forecast.summary}<td><td>${forecast.temperatureF}<td><td>${forecast.temperatureC}<td></tr>`
+            })
+
+            html+= '</table>'
+            
+            document.getElementById('my-table')
+                    .replaceChildren('')
+
+            document.getElementById('my-table') .insertAdjacentHTML('beforeend', html)
+        }) 
+  });
+```
+
+In the same way as with the back-end and front-end services it is also needed to create a `Dockerfile` which is this case is going to be based on a web-server:
+
+```
+FROM nginx:alpine
+
+COPY index.html /usr/share/nginx/html
+COPY index.js /usr/share/nginx/html
+COPY nginx-default.conf /etc/nginx/conf.d/default.conf
+
+RUN chmod 644 /usr/share/nginx/html/index.html
+RUN chmod 644 /usr/share/nginx/html/index.js
+```
+
+Create the build for the web application:
+
+```
 oc new-build --name web-application --binary=true
+```
 
 Create the image:
 
-$ oc start-build web-application --from-dir=. --follow
+```
+oc start-build web-application --from-dir=. --follow
+```
 
-And deploy it with service and route:
+Finally, create a Deployment, a service and a route to be able to load the HTML resource from the browser:
 
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -655,7 +768,7 @@ metadata:
   labels:
     app: web-application
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: web-application
@@ -666,7 +779,7 @@ spec:
     spec:
       containers:
       - name: web-application
-        image: image-registry.openshift-image-registry.svc:5000/default/web-application
+        image: image-registry.openshift-image-registry.svc:5000/test-script/web-application
         ports:
         - containerPort: 80
 ---
@@ -690,17 +803,14 @@ metadata:
 spec:
   port:
     targetPort: 8080
-  tls:
-    termination: edge
   to:
     kind: Service
     name: web-application
+```
 
-NOTE: if error, mixed-blocked change front-end route ot be https.
+If the web-application route is accessed, it should show the weather forecast that communicates to the front end service route.
 
--> Error due to CORs -> needs to be anabled
-
-## Lab3 Configuration Management
+## Lab3 Configuration Management and PVCs
 
 
 -> TODO COnfigmaps injection
@@ -709,7 +819,49 @@ NOTE: if error, mixed-blocked change front-end route ot be https.
 
 -> Kustomize templates
 
+-> Peristency
+
 
 ## Lab4 Configure Autoscaling
 
+One of the biggest benefits of running pods in Openshift is to take advantage of the automatic horizontal pod autoscaler.
 
+The `HorizontalPodAutoscaler` automatically increases or decreases the scale of a deployment, based on metrics collected from the pods that belong to that deployment specification.
+
+There are multiple metrics available to configure the automatic autoscaling but basically the autoscaling can be based:
+
+* CPU Utilization
+* Memory Utilization
+
+An example of the metrics for an autoscale is to configure the desired value of `AverageValue` for cpu utilization on the back-end-service:
+
+```
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cpu-autoscale 
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1 
+    kind: Deployment 
+    name: back-end-service 
+  minReplicas: 1 
+  maxReplicas: 10 
+  metrics: 
+  - type: Resource
+    resource:
+      name: cpu 
+      target:
+        type: AverageValue 
+        averageValue: 30m
+```
+
+If the back-end service has enough load to have a cpu consumption bigger than `30m` the HPA will automatically scale the deployment.
+
+To simulate load and check the autoscaling execute the following command until the cpu consumption of the back-end-service increases:
+
+```
+seq 1 1000 | xargs -n1 -P10  curl "http://back-end-service:8080/weatherForecast"
+```
+
+It is possible to validate that the number of pods of the back-end-service scales automatically
