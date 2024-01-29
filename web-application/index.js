@@ -1,5 +1,5 @@
 getButton.addEventListener("click", () => {
-    fetch('https://front-end-service-test-script.apps-crc.testing/weather')
+    fetch('http://front-end-service-test-script.apps-crc.testing/weather')
         .then(response => { 
             return response.json()
         })
