@@ -11,7 +11,8 @@ namespace front_end_service.Controllers
         {
             HttpClient simpleHttpClient = new HttpClient();
 
-            HttpResponseMessage response = await simpleHttpClient.GetAsync("http://localhost:5118/weatherforecast");
+            //HTTP Client configuration
+            HttpResponseMessage response = await simpleHttpClient.GetAsync("http://back-end-service:8080/weatherforecast");
 
             return await response.Content.ReadAsStringAsync();
         }
