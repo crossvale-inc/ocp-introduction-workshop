@@ -258,25 +258,109 @@ The base image required, is an official redhat .NET 8 image:
 FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env 
 ```
 
-This image will be used to build the application. To build the application it is required to copy the resources to the image and run the required dotnet commands:
+This image will be used to build the application. To build the application it is required to copy the resources to the image and run the required dotnet commands. A Dockerfile example is the following:
 
 ```
+FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env
 
+USER 1001
+
+COPY ./*.csproj ./
+
+COPY . ./
+
+RUN dotnet publish -c Release -o out
+
+# build runtime image
+FROM registry.redhat.io/rhel8/dotnet-80-runtime:8.0
+
+USER 1001
+
+COPY --from=build-env /opt/app-root/src/out /opt/app-root/src/out
+
+EXPOSE 8080
+
+WORKDIR /opt/app-root/src/out
+
+ENTRYPOINT ["dotnet", "back-end-service.dll", "--urls=http://+:8080"]
 ```
 
---> Explain docker file
+The first part of the Dockerfile is building the application by executing the `dotnet publish` command:
 
---> run as containers connecting each other
+````
+FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env
 
---> Show it is difficult due to run, build, ips, etc
+USER 1001
 
-AS containers
+COPY ./*.csproj ./
 
-with network bridge
+COPY . ./
 
-discoger ip
+RUN dotnet publish -c Release -o out
+```
 
-podman inspect backend -> use it
+And the second part is copying the artifact build by the previous step and configuring the entrypoint which is the command that will be run when the image starts. As a note to the configuration, the application url is now configured to be exposed as HTTP in the port 8080, this is possible since the containers of each application will be isolated from each other.
+
+```
+FROM registry.redhat.io/rhel8/dotnet-80-runtime:8.0
+
+USER 1001
+
+COPY --from=build-env /opt/app-root/src/out /opt/app-root/src/out
+
+EXPOSE 8080
+
+WORKDIR /opt/app-root/src/out
+
+ENTRYPOINT ["dotnet", "back-end-service.dll", "--urls=http://+:8080"]
+```
+
+It is possible now to build an run the images and connect the containers with each other. 
+
+It is possible to build and run the back-end service image:
+
+```
+podman build . -t back-end-service:latest
+```
+
+And to run the application:
+
+```
+podman run back-end-service
+```
+
+To test if the application works, it is possible to test a `curl` command within the container that is running, mind that the container id may be different in each case:
+
+```
+podman exec -it 1179077c1be2 curl http://localhost:8080/weatherForecast
+[{"date":"2024-01-30","temperatureC":5,"summary":"Sweltering","temperatureF":40},{"date":"2024-01-31","temperatureC":-14,"summary":"Cool","temperatureF":7},{"date":"2024-02-01","temperatureC":21,"summary":"Scorching","temperatureF":69},{"date":"2024-02-02","temperatureC":19,"summary":"Cool","temperatureF":66},{"date":"2024-02-03","temperatureC":-19,"summary":"Scorching","temperatureF":-2}]
+```
+
+It is possible to build and run the front-end application by executing the same commands as in the back-end service.
+
+In order to connect the front-end-service with the back-end-service, it is required to discover the IP address of the back-end-service container.
+
+To have an IP assigned, it is possible to select the default `bridge` network of postman:
+
+```
+ podman run --net=bridge back-end-service:latest
+```
+
+To discover the IP, it is possible to find it in the output of the following command:
+
+```
+podman inspect -f '{{.NetworkSettings.IPAddress}}' e68f98e25056
+```
+
+The previous command will show an IP address that needs to be configured in the front-end-service HttpClient. Change the code, rebuild the image and execute a curl in the front-end-service container.
+
+```
+$ podman exec 614606cdfb66 curl http://localhost:8080/weather
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   390    0   390    0     0  35454      0 --:--:-- --:--:-- --:--:-- 39000
+[{"date":"2024-01-30","temperatureC":-4,"summary":"Hot","temperatureF":25},{"date":"2024-01-31","temperatureC":-7,"summary":"Chilly","temperatureF":20},{"date":"2024-02-01","temperatureC":19,"summary":"Chilly","temperatureF":66},{"date":"2024-02-02","temperatureC":25,"summary":"Scorching","temperatureF":76},{"date":"2024-02-03","temperatureC":23,"summary":"Sweltering","temperatureF":73}]
+```
 
 ### Lab 1.4 Build Images in Openshift
 
