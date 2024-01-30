@@ -1,6 +1,6 @@
 FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env
 
-USER 1001
+USER 0
 
 COPY ./*.csproj ./
 
@@ -20,5 +20,3 @@ EXPOSE 8080
 WORKDIR /opt/app-root/src/out
 
 ENTRYPOINT ["dotnet", "back-end-service.dll", "--urls=http://+:8080"]
-
-
