@@ -818,15 +818,101 @@ If the web-application route is accessed, it should show the weather forecast th
 
 ## Lab3 Configuration Management and PVCs
 
+One of the benefits of containers is to promote the configuration from one environment to the next.
 
--> TODO COnfigmaps injection
--> ENV vars
--> JSON Loading
+To be able to achive this it is necessary to be able to inject the configuration of each environment dinamically.
 
--> Kustomize templates
+A configmap can be created:
 
--> Peristency
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: service-config
+data:
+  appSettings.json: |
+    {
+        "back-end-service": {
+            "endpoint": "http://back-end-service:8080/weatherForecast"
+        }
+    }
+```
 
+Change the code to be able to load the config from a JSON file:
+
+```
+    builder.Configuration.AddJsonFile("/opt/app-root/config/appSettings.json", optional: false, reloadOnChange: true);
+```
+
+And enable the `IConfiguration` injection:
+
+```
+using Microsoft.AspNetCore.Mvc;
+using System.Net;
+
+namespace front_end_service.Controllers
+{
+    [ApiController]
+    public class FrontEndController
+    {
+        private readonly backEndServiceEndpoint;
+        public FrontEndController(IConfiguration configuration) {
+            this.backEndServiceEndpoint = configuration["back-end-service:endpoint"]
+        }
+
+        [HttpGet("/weather")]
+        public async Task<string> GetWeatherForecast()
+        {
+            HttpClient simpleHttpClient = new HttpClient();
+
+            //HTTP Client configuration
+            HttpResponseMessage response = await simpleHttpClient.GetAsync("backEndServiceEndpoint");
+
+            return await response.Content.ReadAsStringAsync();
+        }
+    }
+}
+```
+
+Create the configMap volume:
+
+```
+spec:
+  volumes:
+  - name: config-volume
+    configMap:
+        name: service-config
+```
+
+And mount it:
+
+```
+  containers:
+    - volumeMounts:
+          - name: config-volume
+             mountPath: /opt/app-root/config
+
+```
+
+For kustomize, create a standard kustomize folder structure:
+
+```
+kustomize/
+  base-dotnet/
+    deployment.yaml
+    service.yaml
+    kustomization.yaml
+  overlays/
+    back-end-service/
+      base/
+        kustomization.yaml
+        patch_deployment.yaml
+        patch_service.yaml
+```
+
+Add the front-end service configuration to be deployed with kustomize.
+
+Add a configmap from file and create a route to be created only in the front-end
 
 ## Lab4 Configure Autoscaling
 

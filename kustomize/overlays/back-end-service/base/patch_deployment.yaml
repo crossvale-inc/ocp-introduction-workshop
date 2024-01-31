@@ -1,0 +1,12 @@
+- op: replace
+  path: /metadata/name
+  value: back-end-service
+- op: replace
+  path: /metadata/labels/app
+  value: back-end-service
+- op: replace
+  path: /spec/selector/matchLabels/app
+  value: back-end-service
+- op: replace
+  path: /spec/template/metadata/labels/app
+  value: back-end-service

@@ -1,0 +1,12 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: front-end-service
+  labels:
+    app: front-end-service
+spec:
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: front-end-service

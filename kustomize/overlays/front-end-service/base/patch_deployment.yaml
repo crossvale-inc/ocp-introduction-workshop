@@ -1,0 +1,23 @@
+- op: replace
+  path: /metadata/name
+  value: front-end-service
+- op: replace
+  path: /metadata/labels/app
+  value: front-end-service
+- op: replace
+  path: /spec/selector/matchLabels/app
+  value: front-end-service
+- op: replace
+  path: /spec/template/metadata/labels/app
+  value: front-end-service
+- op: add
+  path: /spec/template/spec/volumes
+  value:
+    - name: config-volume
+      configMap:
+        name: service-config
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts
+  value:
+    - name: config-volume
+      mountPath: /opt/app-root/config
