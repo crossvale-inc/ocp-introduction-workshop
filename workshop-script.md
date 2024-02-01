@@ -287,7 +287,7 @@ ENTRYPOINT ["dotnet", "back-end-service.dll", "--urls=http://+:8080"]
 
 The first part of the Dockerfile is building the application by executing the `dotnet publish` command:
 
-````
+```
 FROM registry.redhat.io/rhel8/dotnet-80:8.0 AS build-env
 
 USER 1001
@@ -297,6 +297,7 @@ COPY ./*.csproj ./
 COPY . ./
 
 RUN dotnet publish -c Release -o out
+
 ```
 
 And the second part is copying the artifact build by the previous step and configuring the entrypoint which is the command that will be run when the image starts. As a note to the configuration, the application url is now configured to be exposed as HTTP in the port 8080, this is possible since the containers of each application will be isolated from each other.
