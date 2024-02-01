@@ -743,14 +743,22 @@ getButton.addEventListener("click", () => {
 In the same way as with the back-end and front-end services it is also needed to create a `Dockerfile` which is this case is going to be based on a web-server:
 
 ```
-FROM nginx:alpine
+FROM registry.access.redhat.com/ubi8/nginx-122
 
-COPY index.html /usr/share/nginx/html
-COPY index.js /usr/share/nginx/html
-COPY nginx-default.conf /etc/nginx/conf.d/default.conf
+# Add application sources to a directory that the assemble script expects them
+# and set permissions so that the container runs without root access
+USER 0
+ADD index.html /tmp/src/
+ADD index.js /tmp/src/
 
-RUN chmod 644 /usr/share/nginx/html/index.html
-RUN chmod 644 /usr/share/nginx/html/index.js
+RUN chown -R 1001:0 /tmp/src
+USER 1001
+
+# Let the assemble script to install the dependencies
+RUN /usr/libexec/s2i/assemble
+
+# Run script uses standard ways to run the application
+CMD /usr/libexec/s2i/run
 ```
 
 Create the build for the web application:
