@@ -1007,7 +1007,7 @@ spec:
     ...
 ```
 
-And mount it, by adding the following `volumeMount` structure to the `spec.template.spec.containers` structure:
+And mount it, by adding the following `volumeMounts` structure to the `spec.template.spec.containers` structure:
 
 ```
   containers:
