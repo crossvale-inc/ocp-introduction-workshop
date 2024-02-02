@@ -56,13 +56,17 @@ info: Microsoft.Hosting.Lifetime[0]
       Content root path: C:\Users\MarcosRivasBernaldod\Projects\Crossvale\Cadence\workshop resources\workshop-services\back-end-service
 ```
 
-To test the application:
+Take note of the port your application is running on: Example: "Now listening on: ... **5118**"
+
+To test the application, open a second shell terminal, and run:
 
 ```
 $ curl http://localhost:5118/weatherforecast
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-100   381    0   381    0     0  23287      0 --:--:-- --:--:-- --:--:-- 25400[{"date":"2024-01-26","temperatureC":-3,"summary":"Cool","temperatureF":27},{"date":"2024-01-27","temperatureC":21,"summary":"Balmy","temperatureF":69},{"date":"2024-01-28","temperatureC":20,"summary":"Hot","temperatureF":67},{"date":"2024-01-29","temperatureC":20,"summary":"Chilly","temperatureF":67},{"date":"2024-01-30","temperatureC":7,"summary":"Freezing","temperatureF":44}]
+100   381    0   381    0     0  23287      0 --:--:-- --:--:-- --:--:-- 25400
+
+[{"date":"2024-01-26","temperatureC":-3,"summary":"Cool","temperatureF":27},{"date":"2024-01-27","temperatureC":21,"summary":"Balmy","temperatureF":69},{"date":"2024-01-28","temperatureC":20,"summary":"Hot","temperatureF":67},{"date":"2024-01-29","temperatureC":20,"summary":"Chilly","temperatureF":67},{"date":"2024-01-30","temperatureC":7,"summary":"Freezing","temperatureF":44}]
 ```
 
 ### Lab 1.2 Implement the Front-End application
@@ -204,6 +208,8 @@ warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
       Failed to determine the https port for redirect
 ```
 
+Again, take note of the port the front-end-service is using.
+
 It is possible to consume the weather front end service:
 
 ```
@@ -239,13 +245,17 @@ namespace front_end_service.Controllers
 }
 ```
 
+**Note:** Replace the localhost URL port with the port your back-end-service is running on.
+
 If both services are execute at the same time, if a curl is send to the front end service:
 
 ```
 $ curl http://localhost:5140/weather
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     100   387    0   387    0     0   2415      0 --:--:-- --:--:-- --:--:--  2433[{"date":"2024-01-26","temperatureC":18,"summary":"Sweltering","temperatureF":64},{"date":"2024-01-27","temperatureC":-15,"summary":"Hot","temperatureF":6},{"date":"2024-01-28","temperatureC":41,"summary":"Sweltering","temperatureF":105},{"date":"2024-01-29","temperatureC":31,"summary":"Warm","temperatureF":87},{"date":"2024-01-30","temperatureC":0,"summary":"Mild","temperatureF":32}]
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     100   387    0   387    0     0   2415      0 --:--:-- --:--:-- --:--:--  2433
+  
+  [{"date":"2024-01-26","temperatureC":18,"summary":"Sweltering","temperatureF":64},{"date":"2024-01-27","temperatureC":-15,"summary":"Hot","temperatureF":6},{"date":"2024-01-28","temperatureC":41,"summary":"Sweltering","temperatureF":105},{"date":"2024-01-29","temperatureC":31,"summary":"Warm","temperatureF":87},{"date":"2024-01-30","temperatureC":0,"summary":"Mild","temperatureF":32}]
 ```
 
 ### Lab 1.3 Create Back-End Service Container Image
@@ -316,7 +326,9 @@ WORKDIR /opt/app-root/src/out
 ENTRYPOINT ["dotnet", "back-end-service.dll", "--urls=http://+:8080"]
 ```
 
-It is possible now to build an run the images and connect the containers with each other. 
+It is possible now to build an run the images and connect the containers with each other.
+
+**Note:** This next section requires a valid login to the Red Hat Registry. If you don't have a valid login, please proceed to the next lab - 1.4.
 
 It is possible to build and run the back-end service image:
 
@@ -444,14 +456,47 @@ Since there is a `Dockerfile` in the root folder of the input, it will build the
 
 The same procedure can be followed to build an image for the front end service.
 
-## Lab2 Deploy a .NET Microservice
+### Lab 1.4.1 Build Images in Openshift - Front-End Service
+
+Create a Dockerfile in the front-end-serivce directory. (Feel free to copy the one created for the back-end-service.)
+
+Update the `ENTRYPOINT` line to reference the front-end-service.dll file.
+
+Create a `BuildConfig` for the Front-End Service by executing the following commmand:
+
+```
+oc new-build --name front-end-service --binary=true
+``` 
+
+Start the front-end-service image build with the following command:
+
+```
+oc start-build front-end-service --from-dir=. --follow
+```
+
+
+## Lab 2 Deploy a .NET Microservice
+
+For this lab and following, you need to replace the word `workshop` in the URLs below with the namespace you are working in OpenShift with. To find this value, run the following:
+
+```
+oc project
+```
+
+You will receive something like:
+
+```
+Using project "q049u2...9t1a-fl9yiq" from context named "logged-user" on server "https://ip.ad.dr.ess:443".
+```
+
+Copy the quoted string after the word `project` above, without the quotes, and use it in place of `workshop` in the following image URLs.
 
 When an image is built in openshift it is possible to run a container within a pod that executes the specified image.
 
 It is possible to run a pod with a simple `oc` command:
 
 ```
-oc run back-end-service --image=image-registry.openshift-image-registry.svc:5000/workshop/back-end-image:latest
+oc run back-end-service --image=image-registry.openshift-image-registry.svc:5000/workshop/back-end-service:latest
 ```
 
 When the pod is created, it is possible to open a terminal inside the container or to see the container logs from the Openshfit console. In order to test if the image is running correcltly, it is possible connect to the running pod:
@@ -472,12 +517,18 @@ It is possible to do the same and run the front-end-service as another pod in Op
 When the front-end-service is running, there should be two pods running within the same namespace:
 
 ```
-
+oc get pods -o name
 ```
 
-The front-end-service will not be able to return a valid response since the Pod Ip of the back-end-servie is not configured. It is not recommended to manually configure a Pod IP as an endpoint because it is different for each Pod.
+```
+pod/back-end-service
+pod/front-end-service
+...
+```
 
-To discover the Pod Ip of the back end service, run the following command:
+The front-end-service will not be able to return a valid response since the Pod IP of the back-end-service is not configured. It is not recommended to manually configure a Pod IP as an endpoint because it is different for each Pod.
+
+To discover the Pod IP of the back end service, run the following command:
 
 ```
 oc get pod back-end-service  -o jsonpath='{.status.podIP}'
@@ -504,12 +555,22 @@ metadata:
   name: back-end-service
 spec:
   selector:
-      run: back-end-service
+      app: back-end-service
   ports:
     - name: http
       protocol: TCP
       port: 8080
       targetPort: 8080
+```
+
+Create a directory `yaml` in the project root.
+
+Create a file called `bes-service.yaml` and copy the contents above into it.
+
+Run the following command from the `yaml` directory.
+
+```
+oc apply -f bes-service.yaml
 ```
 
 After the service is created, if the same curl to the `back-end-service` host it works because it is able to resolve the ip since there is a service called `back-end-service`:
@@ -534,13 +595,13 @@ All the probes can be configured as:
 * HTTP GET operation
 ** A successful operation is considered if the HTTP status code returned is between 200-399
 * Command
-** Executes a command in the container, is successful if it exists with s 0 status.
+** Executes a command in the container, is successful if it exits with a 0 status.
 * TCP socket
 ** If a connection is established the probe is successful
 
 Other important configuration for Pods are the resources available to each container. The resources can be specified as `request` or as a `limit`. 
 
-When the request is specified the Pod will be scheduled in a node that has resources free to guarantee that the requested resource is available. 
+When the request is specified the Pod will be scheduled in a node that has resources free to guarantee that the requested resource is available.
 
 A limit, however, is the maximum amount of that resource that a container can consume.
 
@@ -558,7 +619,7 @@ oc delete pod front-end-service
 oc delete service back-end-service
 ```
 
-To create a Deployment, create the following YAML: 
+To create a Deployment, create the following YAML file: 
 
 ```
 apiVersion: apps/v1
@@ -584,10 +645,13 @@ spec:
         - containerPort: 8080
 ```
 
+**Note:** Remember to replace `workshop` in the image URL with your "project" string from earlier.
+
 It is possible to create multiple pods with the same specification by changing the number of replicas in the `Deployment` specification, also, if a pod is deleted a new one will be created.
 
 If a change of the specification is done, it will redeploy a new version of all the pod replicas that will match the new speification.
-Shwo that a yaml change on deployment produces a redeploy of all pods.
+
+Show that a yaml change on deployment produces a redeploy of all pods.
 
 To enable the communication across pods, create a service for the back-end-service deployment:
 
@@ -628,7 +692,7 @@ spec:
     spec:
       containers:
       - name: front-end-service
-        image: image-registry.openshift-image-registry.svc:5000/workshop/front-end-service
+        image: image-registry.openshift-image-registry.svc:5000/workshop/front-end-service:latest
         ports:
         - containerPort: 8080
 ---
@@ -646,7 +710,9 @@ spec:
       targetPort: 8080
 ```
 
-The service created only allows communication within the cluster, the PodIps are only accesible to services running inside the Openshift cluster. It is possible to enable communication to consumers outside the cluster by creating an Openshift `Route`:
+**Note:** Remember to replace `workshop` with your "project" string from earlier.
+
+The service created only allows communication within the cluster, the Pod IPs are only accesible to services running inside the Openshift cluster. It is possible to enable communication to consumers outside the cluster by creating an Openshift `Route`:
 
 To expose the front end from outside the cluster create a route:
 
@@ -663,7 +729,7 @@ spec:
     name: front-end-service
 ```
 
-If the route name is bigger than 63 characters the route creation will fail, try to specify a hostname like the following:
+If the route name is bigger than 63 characters the route creation will fail, try to specify a hostname like the following, by adding this `host` record as a child of the `spec` record in the Route YAML file:
 
 ```
   host: front-end-service-mrivas-w8mjp0.apps.oscadetest.bank.ad.bxs.com
@@ -680,6 +746,24 @@ If a curl is executed to that route, a successful response will be obtained:
 ```
 curl http://<route_host>/weather
 ````
+
+Or is it... ;-)
+
+**Update the Front-End-Service to make use of the Back-End-Service Service name**
+
+Update the FrontEndControllers.cs file, replacing the localhost URL with `http://back-end-service:8080/weatherforecast`
+
+Rebuild the front-end-service image. Kill the current front-end-service pod, and allow it to reload.
+
+Test the front-end-service:
+
+```
+curl http://front-end-service:8080/weather
+```
+
+Kill the back-end-service pod, watch it restart, and test the front-end-service again, verifying that even though there is a new Pod (with a new IP address - feel free to do it again, checking the back-end-service Pod IP address before and after), the connection still works.
+
+And now re-test the route hostname.
 
 This means that the `front-end-service` is exposing the weather forecast to external consumers, so it is possible to implement a web-application that consumes that service and shows the weather information.
 
@@ -794,7 +878,7 @@ spec:
     spec:
       containers:
       - name: web-application
-        image: image-registry.openshift-image-registry.svc:5000/test-script/web-application
+        image: image-registry.openshift-image-registry.svc:5000/workshop/web-application:latest
         ports:
         - containerPort: 80
 ---
@@ -825,11 +909,35 @@ spec:
 
 If the web-application route is accessed, it should show the weather forecast that communicates to the front end service route.
 
-## Lab3 Configuration Management and PVCs
+**Note** If you don't get anything back from the `GET Data` button, you will likely need to add CORS Policy options to your Front-End-Service Program.cs file.
+
+Add the following to front-end-service/Program.cs, below the `AddControllers` line:
+
+```
+builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("CorsPolicy", builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+    });
+```
+
+And the following before the `AddHttpRedirection` line:
+
+```
+app.UseCors("CorsPolicy");
+```
+
+Re-build the front-end-service image. Kill the current front-end-service pod. Re-test.
+
+## Lab 3 Configuration Management and PVCs
 
 One of the benefits of containers is to promote the configuration from one environment to the next.
 
-To be able to achive this it is necessary to be able to inject the configuration of each environment dinamically.
+To be able to achive this it is necessary to be able to inject the configuration of each environment dynamically.
 
 A configmap can be created:
 
@@ -847,13 +955,13 @@ data:
     }
 ```
 
-Change the code to be able to load the config from a JSON file:
+Change the code (front-end-service/Program.cs) to be able to load the config from a JSON file. Add the following as an `else` clause of the `if (app Environment.IsDevelopment())` statement:
 
 ```
     builder.Configuration.AddJsonFile("/opt/app-root/config/appSettings.json", optional: false, reloadOnChange: true);
 ```
 
-And enable the `IConfiguration` injection:
+And enable the `IConfiguration` injection in front-end-service/Controllers/FrontEndControllers.cs:
 
 ```
 using Microsoft.AspNetCore.Mvc;
@@ -864,9 +972,9 @@ namespace front_end_service.Controllers
     [ApiController]
     public class FrontEndController
     {
-        private readonly backEndServiceEndpoint;
+        private readonly string backEndServiceEndpoint;
         public FrontEndController(IConfiguration configuration) {
-            this.backEndServiceEndpoint = configuration["back-end-service:endpoint"]
+            this.backEndServiceEndpoint = configuration["back-end-service:endpoint"];
         }
 
         [HttpGet("/weather")]
@@ -875,7 +983,7 @@ namespace front_end_service.Controllers
             HttpClient simpleHttpClient = new HttpClient();
 
             //HTTP Client configuration
-            HttpResponseMessage response = await simpleHttpClient.GetAsync("backEndServiceEndpoint");
+            HttpResponseMessage response = await simpleHttpClient.GetAsync(backEndServiceEndpoint);
 
             return await response.Content.ReadAsStringAsync();
         }
@@ -883,7 +991,11 @@ namespace front_end_service.Controllers
 }
 ```
 
-Create the configMap volume:
+Re-Build the front-end-service image.
+
+Create the configMap volume.
+
+Add the following `volumes` statement to the front-end-service Deployment YAML definition, as a child of the `spec.template.spec` structure:
 
 ```
 spec:
@@ -891,17 +1003,34 @@ spec:
   - name: config-volume
     configMap:
         name: service-config
+  containers:
+    ...
 ```
 
-And mount it:
+And mount it, by adding the following `volumeMount` structure to the `spec.template.spec.containers` structure:
 
 ```
   containers:
-    - volumeMounts:
-          - name: config-volume
-             mountPath: /opt/app-root/config
-
+  - name: front-end-service
+    ...
+    volumeMounts:
+    - name: config-volume
+      mountPath: /opt/app-root/config
 ```
+
+Delete the `front-end-service` Deployment, and re-create it with the updated definition.
+
+Test the Weather Forecast web application.
+
+**Let's Break It!**
+
+Through the OCP Console, navigate to ConfigMaps -> service-config -> YAML. Now change the endpoint URL to something wrong. Save it.
+
+Now, kill the front-end-service pod, and allow it to reload. Test the Weather Forecast web application. It should not return any data. You can check out the error in the browser Developer tools.
+
+Repeat the above steps, but fix the endpoint back to it's original value. Kill the front-end-service pod and re-test.
+
+**Kustomize:**
 
 For kustomize, create a standard kustomize folder structure:
 
@@ -923,7 +1052,7 @@ Add the front-end service configuration to be deployed with kustomize.
 
 Add a configmap from file and create a route to be created only in the front-end
 
-## Lab4 Configure Autoscaling
+## Lab 4 Configure Autoscaling
 
 One of the biggest benefits of running pods in Openshift is to take advantage of the automatic horizontal pod autoscaler.
 
