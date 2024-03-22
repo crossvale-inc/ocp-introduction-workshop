@@ -2,8 +2,6 @@
 
 Useful links:
 
-* DevSpaces
-** https://devspaces.apps.oscadetest.bank.ad.bxs.com
 * Openshift Documentaion
 ** https://access.redhat.com/documentation/en-us/openshift_container_platform/4.14
 * Kubernetes documentation
@@ -732,8 +730,10 @@ spec:
 If the route name is bigger than 63 characters the route creation will fail, try to specify a hostname like the following, by adding this `host` record as a child of the `spec` record in the Route YAML file:
 
 ```
-  host: front-end-service-mrivas-w8mjp0.apps.oscadetest.bank.ad.bxs.com
+  host: front-end-service-mrivas-w8mjp0.<cluster-suffix>
 ```
+
+Remplace `cluster-suffix` with your own cluster suffix.
 
 When the route is creted, it is possible to discover the hostname by executing the command:
 
