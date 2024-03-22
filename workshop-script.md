@@ -30,7 +30,7 @@ $ dotnet build
 MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
-  back-end-service -> C:\Users\MarcosRivasBernaldod\Projects\Crossvale\Cadence\workshop resources\workshop-services\back-end-service\bin\Debug\net8.0\back-end-service.dll
+  back-end-service -> C:\Users\MarcosRivasBernaldod\Projects\Crossvale\workshop resources\workshop-services\back-end-service\bin\Debug\net8.0\back-end-service.dll
 
 Build succeeded.
     0 Warning(s)
@@ -51,7 +51,7 @@ info: Microsoft.Hosting.Lifetime[0]
 info: Microsoft.Hosting.Lifetime[0]
       Hosting environment: Development
 info: Microsoft.Hosting.Lifetime[0]
-      Content root path: C:\Users\MarcosRivasBernaldod\Projects\Crossvale\Cadence\workshop resources\workshop-services\back-end-service
+      Content root path: C:\Users\MarcosRivasBernaldod\Projects\Crossvale\workshop resources\workshop-services\back-end-service
 ```
 
 Take note of the port your application is running on: Example: "Now listening on: ... **5118**"
@@ -201,7 +201,7 @@ info: Microsoft.Hosting.Lifetime[0]
 info: Microsoft.Hosting.Lifetime[0]
       Hosting environment: Development
 info: Microsoft.Hosting.Lifetime[0]
-      Content root path: C:\Users\MarcosRivasBernaldod\Projects\Crossvale\Cadence\workshop resources\workshop-services\front-end-service
+      Content root path: C:\Users\MarcosRivasBernaldod\Projects\Crossvale\workshop resources\workshop-services\front-end-service
 warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
       Failed to determine the https port for redirect
 ```
