@@ -1,4 +1,4 @@
-# XV Cadence Workshop
+# XV OCP Introduction Workshop
 
 Useful links:
 
